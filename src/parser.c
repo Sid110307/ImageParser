@@ -318,10 +318,69 @@ struct Pixel* parsePPM_P3(const unsigned char* data, const size_t size, size_t* 
 	return pixels;
 }
 
-struct Pixel* parsePPM_P6(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parsePPM_P6(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!\n");
-	return NULL;
+	const unsigned char *p, *end;
+	int maxVal;
+
+	if (!count || !width || !height) return NULL;
+	if (!readPPMHeader(data, size, "P6", width, height, &maxVal, &p, &end)) return NULL;
+
+	*count = (size_t)*width * (size_t)*height;
+	if (*count > SIZE_MAX / sizeof(struct Pixel))
+	{
+		fprintf(stderr, "Image too large: %dx%d exceeds maximum pixel count\n", *width, *height);
+		return NULL;
+	}
+
+	struct Pixel* pixels = malloc(*count * sizeof(struct Pixel));
+	if (!pixels)
+	{
+		fprintf(stderr, "Failed to allocate memory for %zu pixels\n", *count);
+		return NULL;
+	}
+
+	const float invMax = 1.0f / (float)maxVal;
+	const int bytesPerSample = maxVal > 255 ? 2 : 1;
+
+	for (int y = 0; y < *height; ++y)
+		for (int x = 0; x < *width; ++x)
+		{
+			if (p + (GLsizeiptr)(3 * bytesPerSample) > end)
+			{
+				fprintf(stderr, "Unexpected end of data at (%d, %d)\n", x, y);
+				free(pixels);
+
+				return NULL;
+			}
+
+			int r, g, b;
+			if (bytesPerSample == 1)
+			{
+				r = p[0];
+				g = p[1];
+				b = p[2];
+				p += 3;
+			}
+			else
+			{
+				r = p[0] << 8 | p[1];
+				g = p[2] << 8 | p[3];
+				b = p[4] << 8 | p[5];
+				p += 6;
+			}
+
+			struct Pixel* px = &pixels[(size_t)y * (size_t)*width + (size_t)x];
+			px->x = (float)x;
+			px->y = (float)y;
+			px->r = (float)r * invMax;
+			px->g = (float)g * invMax;
+			px->b = (float)b * invMax;
+			px->a = 1.0f;
+			px->size = PIXEL_SIZE;
+		}
+
+	return pixels;
 }
 
 struct Pixel* parsePGM_P5(const unsigned char* data, size_t size, size_t* count, int* width, int* height)

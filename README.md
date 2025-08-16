@@ -4,7 +4,7 @@
 
 - [x] OpenGL + GLFW renderer
 - [x] PPM P3
-- [ ] PPM P6
+- [x] PPM P6
 - [ ] PGM P5
 - [ ] PBM P4
 - [ ] BMP 24-bit (uncompressed)
