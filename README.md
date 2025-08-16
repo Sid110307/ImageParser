@@ -19,5 +19,4 @@
 - [ ] PNG 16-bit (gAMA, sRGB)
 - [ ] PNG Adam7 (interlaced)
 - [ ] TIFF baseline (uncompressed)
-- [ ] EXIF properties
 - [ ] JPEG baseline (non-progressive)

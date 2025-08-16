@@ -5,23 +5,22 @@
 
 static const char* vertexSource = "#version 330 core\n"
 	"layout(location = 0) in vec2 aPos;\n"
-	"layout(location = 1) in vec2 aUV;\n"
+	"layout(location = 1) in vec4 aColor;\n"
 	"layout(location = 2) in float aSize;\n"
-	"out vec2 vUV;\n"
+	"out vec4 vColor;\n"
 	"void main()\n"
 	"{\n"
-	"	gl_Position = vec4(aPos, 0.0, 1.0);\n"
-	"	vUV = aUV;\n"
-	"	gl_PointSize = aSize;\n"
+	"    gl_Position = vec4(aPos, 0.0, 1.0);\n"
+	"    vColor = aColor;\n"
+	"    gl_PointSize = aSize;\n"
 	"}\n";
 
 static const char* fragmentSource = "#version 330 core\n"
-	"in vec2 vUV;\n"
+	"in vec4 vColor;\n"
 	"out vec4 FragColor;\n"
-	"uniform sampler2D uTexture;\n"
 	"void main()\n"
 	"{\n"
-	"	FragColor = texture(uTexture, vUV);\n"
+	"    FragColor = vColor;\n"
 	"}\n";
 
 // ReSharper disable once CppParameterMayBeConstPtrOrRef
@@ -141,36 +140,6 @@ static GLuint linkProgram(const GLuint vs, const GLuint fs)
 	return prog;
 }
 
-GLuint createTextureRGBA8(const int width, const int height, const void* pixels)
-{
-	GLuint tex = 0;
-	glGenTextures(1, &tex);
-	glBindTexture(GL_TEXTURE_2D, tex);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-
-	return tex;
-}
-
-void bindTexture(const GLuint program, const char* uniformName, const GLuint texture, const GLint unit)
-{
-	glUseProgram(program);
-	const GLint loc = glGetUniformLocation(program, uniformName);
-	if (loc != -1)
-	{
-		glActiveTexture(GL_TEXTURE0 + unit);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glUniform1i(loc, unit);
-	}
-	glUseProgram(0);
-}
-
 int createObjects(struct GLObjects* out, const struct Pixel* pixels, const size_t count)
 {
 	const GLuint vs = compileShader(GL_VERTEX_SHADER, vertexSource);
@@ -187,7 +156,7 @@ int createObjects(struct GLObjects* out, const struct Pixel* pixels, const size_
 	glBindVertexArray(out->VAO);
 	glBindBuffer(GL_ARRAY_BUFFER, out->VBO);
 
-	const GLsizeiptr stride = 5 * sizeof(float);
+	const GLsizeiptr stride = 7 * sizeof(float);
 	if (pixels && count > 0)
 		glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(count * stride), pixels, GL_STATIC_DRAW);
 	else
@@ -197,10 +166,10 @@ int createObjects(struct GLObjects* out, const struct Pixel* pixels, const size_
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (int)stride, (void*)0);
 
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, (int)stride, (void*)(2 * sizeof(float)));
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, (int)stride, (void*)(2 * sizeof(float)));
 
 	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, (int)stride, (void*)(4 * sizeof(float)));
+	glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, (int)stride, (void*)(6 * sizeof(float)));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);

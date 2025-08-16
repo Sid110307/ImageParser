@@ -4,7 +4,7 @@
 #include "include/renderer.h"
 #include "include/parser.h"
 
-const char* readFile(const char* filename)
+char* readFile(const char* filename, size_t* outSize)
 {
 	FILE* file = fopen(filename, "rb");
 	if (!file) return NULL;
@@ -35,6 +35,8 @@ const char* readFile(const char* filename)
 	}
 
 	buffer[size] = '\0';
+	if (outSize) *outSize = (size_t)size;
+
 	return buffer;
 }
 
@@ -46,40 +48,59 @@ int main(int argc, char** argv)
 		return EXIT_FAILURE;
 	}
 
-	const char* content = readFile(argv[1]);
+	size_t contentSize = 0;
+	char* content = readFile(argv[1], &contentSize);
 	if (!content)
 	{
 		fprintf(stderr, "Failed to read file: %s\n", argv[1]);
 		return EXIT_FAILURE;
 	}
 
-	GLFWwindow* window = createWindow(800, 600, "ImageParser");
+	struct GLObjects gl = {0};
+	size_t pixelCount = 0;
+	int width = 0, height = 0;
+	struct Pixel* pixels = parseImage((const unsigned char*)content, contentSize, &pixelCount, &width, &height);
+
+	if (!pixels || pixelCount == 0)
+	{
+		fprintf(stderr, "Failed to parse image: %s\n", argv[1]);
+		free(content);
+		freePixels(pixels, pixelCount);
+
+		return EXIT_FAILURE;
+	}
+
+	if (width <= 0 || height <= 0)
+	{
+		fprintf(stderr, "Invalid image dimensions: %dx%d\n", width, height);
+		free(content);
+		freePixels(pixels, pixelCount);
+
+		return EXIT_FAILURE;
+	}
+
+	GLFWwindow* window = createWindow(width, height, "ImageParser");
 	if (!window)
 	{
-		free((void*)content);
+		free(content);
+		freePixels(pixels, pixelCount);
+
 		return EXIT_FAILURE;
 	}
 
 	if (!initGLEW())
 	{
-		free((void*)content);
+		free(content);
+		freePixels(pixels, pixelCount);
 		glfwTerminate();
 
 		return EXIT_FAILURE;
 	}
 
-	struct GLObjects gl = {0};
-	const struct Pixel pixels[] = {
-		{-0.5f, -0.5f, 1.0f, 0.0f, 0.0f},
-		{0.5f, -0.5f, 0.0f, 1.0f, 0.0f},
-		{0.0f, 0.5f, 0.0f, 0.0f, 1.0f},
-		{0.0f, 0.0f, 1.0f, 1.0f, 1.0f}
-	};
-	const int pixelCount = sizeof(pixels) / sizeof(pixels[0]);
-
 	if (!createObjects(&gl, pixels, pixelCount))
 	{
-		free((void*)content);
+		free(content);
+		freePixels(pixels, pixelCount);
 		destroyObjects(&gl);
 		glfwTerminate();
 
@@ -95,13 +116,14 @@ int main(int argc, char** argv)
 	{
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, GLFW_TRUE);
 		glClear(GL_COLOR_BUFFER_BIT);
-		render(&gl, pixelCount);
+		render(&gl, (int)pixelCount);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
-	free((void*)content);
+	free(content);
+	freePixels(pixels, pixelCount);
 	destroyObjects(&gl);
 	glfwTerminate();
 
