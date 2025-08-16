@@ -10,39 +10,39 @@ struct Pixel* parseImage(const unsigned char* data, const size_t size, size_t* c
 	const int type = getImageType(data, size);
 	switch (type)
 	{
-		case IMAGE_TYPE_PPM_P3:
+		case IMAGE_TYPE_PPM_P3: printf("PPM P3\n");
 			return parsePPM_P3(data, size, count, width, height);
-		case IMAGE_TYPE_PPM_P6:
+		case IMAGE_TYPE_PPM_P6: printf("PPM P6\n");
 			return parsePPM_P6(data, size, count, width, height);
-		case IMAGE_TYPE_PGM_P5:
+		case IMAGE_TYPE_PGM_P5: printf("PGM P5\n");
 			return parsePGM_P5(data, size, count, width, height);
-		case IMAGE_TYPE_PBM_P4:
+		case IMAGE_TYPE_PBM_P4: printf("PBM P4\n");
 			return parsePBM_P4(data, size, count, width, height);
-		case IMAGE_TYPE_BMP_24:
+		case IMAGE_TYPE_BMP_24: printf("BMP 24\n");
 			return parseBMP_24(data, size, count, width, height);
-		case IMAGE_TYPE_BMP_32:
+		case IMAGE_TYPE_BMP_32: printf("BMP 32\n");
 			return parseBMP_32(data, size, count, width, height);
-		case IMAGE_TYPE_TGA_24:
+		case IMAGE_TYPE_TGA_24: printf("TGA 24\n");
 			return parseTGA_24(data, size, count, width, height);
-		case IMAGE_TYPE_TGA_32:
+		case IMAGE_TYPE_TGA_32: printf("TGA 32\n");
 			return parseTGA_32(data, size, count, width, height);
-		case IMAGE_TYPE_TGA_RLE:
+		case IMAGE_TYPE_TGA_RLE: printf("TGA RLE\n");
 			return parseTGA_RLE(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_8BIT:
+		case IMAGE_TYPE_PNG_8BIT: printf("PNG 8-bit\n");
 			return parsePNG_8bit(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_TRNS:
+		case IMAGE_TYPE_PNG_TRNS: printf("PNG TRNS\n");
 			return parsePNG_TRNS(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_PLTE:
+		case IMAGE_TYPE_PNG_PLTE: printf("PNG PLTE\n");
 			return parsePNG_PLTE(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_GRAYSCALE:
+		case IMAGE_TYPE_PNG_GRAYSCALE: printf("PNG Grayscale\n");
 			return parsePNG_Grayscale(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_16BIT:
+		case IMAGE_TYPE_PNG_16BIT: printf("PNG 16-bit\n");
 			return parsePNG_16bit(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_ADAM7:
+		case IMAGE_TYPE_PNG_ADAM7: printf("PNG ADAM7\n");
 			return parsePNG_ADAM7(data, size, count, width, height);
-		case IMAGE_TYPE_TIFF_BASELINE:
+		case IMAGE_TYPE_TIFF_BASELINE: printf("TIFF Baseline\n");
 			return parseTIFF_Baseline(data, size, count, width, height);
-		case IMAGE_TYPE_JPEG_BASELINE:
+		case IMAGE_TYPE_JPEG_BASELINE: printf("JPEG Baseline\n");
 			return parseJPEG_Baseline(data, size, count, width, height);
 		default:
 			fprintf(stderr, "Unknown image type: %d\n", type);
@@ -80,36 +80,16 @@ int getImageType(const unsigned char* data, const size_t size)
 		return IMAGE_TYPE_UNKNOWN;
 	}
 
-	if (size >= 18)
-	{
-		const unsigned char colorMapType = data[1];
-		const unsigned char imageType = data[2];
-		const unsigned char pixelDepth = data[16];
-
-		if (colorMapType != 0 && colorMapType != 1)
-		{
-			fprintf(stderr, "Unsupported TGA color map type: %u\n", colorMapType);
-			return IMAGE_TYPE_UNKNOWN;
-		}
-
-		if (imageType == 10) return IMAGE_TYPE_TGA_RLE;
-		if (imageType == 2)
-		{
-			if (pixelDepth == 24) return IMAGE_TYPE_TGA_24;
-			if (pixelDepth == 32) return IMAGE_TYPE_TGA_32;
-		}
-	}
-
 	if (size >= 29 && data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 && data[4] == 0x0D &&
 		data[5] == 0x0A && data[6] == 0x1A && data[7] == 0x0A)
 	{
 		const unsigned char bitDepth = data[24], colorType = data[25], interlace = data[28];
+		int hasTRNS = 0, hasPLTE = 0;
 
 		if (interlace == 1) return IMAGE_TYPE_PNG_ADAM7;
 		if (bitDepth == 16) return IMAGE_TYPE_PNG_16BIT;
 		if (colorType == 0 && (bitDepth == 1 || bitDepth == 2 || bitDepth == 4 || bitDepth == 8))
 			return IMAGE_TYPE_PNG_GRAYSCALE;
-		if (colorType == 3) return IMAGE_TYPE_PNG_PLTE;
 
 		size_t off = 8;
 		while (off + 8 <= size)
@@ -119,12 +99,15 @@ int getImageType(const unsigned char* data, const size_t size)
 			if (off + 8u + len + 4u > size) break;
 
 			const unsigned char* type = &data[off + 4];
-			if (type[0] == 't' && type[1] == 'R' && type[2] == 'N' && type[3] == 'S') return IMAGE_TYPE_PNG_TRNS;
-			if (type[0] == 'P' && type[1] == 'L' && type[2] == 'T' && type[3] == 'E') return IMAGE_TYPE_PNG_PLTE;
+			if (type[0] == 't' && type[1] == 'R' && type[2] == 'N' && type[3] == 'S') hasTRNS = 1;
+			if (type[0] == 'P' && type[1] == 'L' && type[2] == 'T' && type[3] == 'E') hasPLTE = 1;
 
 			off += 8u + len + 4u;
 			if (type[0] == 'I' && type[1] == 'E' && type[2] == 'N' && type[3] == 'D') break;
 		}
+
+		if (colorType == 3 && bitDepth <= 8 && hasTRNS) return IMAGE_TYPE_PNG_TRNS;
+		if (colorType == 3 && bitDepth <= 8 && hasPLTE) return IMAGE_TYPE_PNG_PLTE;
 		if (bitDepth == 8 && interlace == 0) return IMAGE_TYPE_PNG_8BIT;
 
 		fprintf(stderr, "Unsupported PNG image type with bit depth %u, color type %u, interlace %u\n",
@@ -161,6 +144,19 @@ int getImageType(const unsigned char* data, const size_t size)
 		return IMAGE_TYPE_UNKNOWN;
 	}
 
+	if (size >= 18 && (data[1] == 0x00 || data[1] == 0x01))
+	{
+		const unsigned char imageType = data[2];
+		const unsigned char pixelDepth = data[16];
+
+		if (imageType == 10) return IMAGE_TYPE_TGA_RLE;
+		if (imageType == 2)
+		{
+			if (pixelDepth == 24) return IMAGE_TYPE_TGA_24;
+			if (pixelDepth == 32) return IMAGE_TYPE_TGA_32;
+		}
+	}
+
 	return IMAGE_TYPE_UNKNOWN;
 }
 
@@ -168,102 +164,102 @@ void freePixels(struct Pixel* pixels, const size_t count) { if (pixels && count 
 
 struct Pixel* parsePPM_P3(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePPM_P6(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePGM_P5(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePBM_P4(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseBMP_24(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseBMP_32(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseTGA_24(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseTGA_32(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseTGA_RLE(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_8bit(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_TRNS(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_PLTE(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_Grayscale(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_16bit(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_ADAM7(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseTIFF_Baseline(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseJPEG_Baseline(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!");
+	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
