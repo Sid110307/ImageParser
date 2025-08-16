@@ -4,6 +4,11 @@
 #include "include/renderer.h"
 #include "include/parser.h"
 
+struct Pixel* pixels = NULL;
+int imageWidth = 0, imageHeight = 0;
+size_t count = 0;
+struct GLObjects gl = {0};
+
 char* readFile(const char* filename, size_t* outSize)
 {
 	FILE* file = fopen(filename, "rb");
@@ -56,34 +61,30 @@ int main(int argc, char** argv)
 		return EXIT_FAILURE;
 	}
 
-	struct GLObjects gl = {0};
-	size_t pixelCount = 0;
-	int width = 0, height = 0;
-	struct Pixel* pixels = parseImage((const unsigned char*)content, contentSize, &pixelCount, &width, &height);
-
-	if (!pixels || pixelCount == 0)
+	pixels = parseImage((const unsigned char*)content, contentSize, &count, &imageWidth, &imageHeight);
+	if (!pixels || count == 0)
 	{
 		fprintf(stderr, "Failed to parse image: %s\n", argv[1]);
 		free(content);
-		freePixels(pixels, pixelCount);
+		freePixels(pixels, count);
 
 		return EXIT_FAILURE;
 	}
 
-	if (width <= 0 || height <= 0)
+	if (imageWidth <= 0 || imageHeight <= 0)
 	{
-		fprintf(stderr, "Invalid image dimensions: %dx%d\n", width, height);
+		fprintf(stderr, "Invalid image dimensions: %dx%d\n", imageWidth, imageHeight);
 		free(content);
-		freePixels(pixels, pixelCount);
+		freePixels(pixels, count);
 
 		return EXIT_FAILURE;
 	}
 
-	GLFWwindow* window = createWindow(width, height, "ImageParser");
+	GLFWwindow* window = createWindow(imageWidth + PADDING * 2, imageHeight + PADDING * 2, "ImageParser");
 	if (!window)
 	{
 		free(content);
-		freePixels(pixels, pixelCount);
+		freePixels(pixels, count);
 
 		return EXIT_FAILURE;
 	}
@@ -91,16 +92,16 @@ int main(int argc, char** argv)
 	if (!initGLEW())
 	{
 		free(content);
-		freePixels(pixels, pixelCount);
+		freePixels(pixels, count);
 		glfwTerminate();
 
 		return EXIT_FAILURE;
 	}
 
-	if (!createObjects(&gl, pixels, pixelCount))
+	if (!createObjects(&gl, pixels, count))
 	{
 		free(content);
-		freePixels(pixels, pixelCount);
+		freePixels(pixels, count);
 		destroyObjects(&gl);
 		glfwTerminate();
 
@@ -109,21 +110,21 @@ int main(int argc, char** argv)
 
 	int w, h;
 	glfwGetFramebufferSize(window, &w, &h);
-	glViewport(0, 0, w, h);
+	updatePositions(w, h);
 	glClearColor(0.08f, 0.09f, 0.12f, 1.0f);
 
 	while (!glfwWindowShouldClose(window))
 	{
 		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, GLFW_TRUE);
 		glClear(GL_COLOR_BUFFER_BIT);
-		render(&gl, (int)pixelCount);
+		render(&gl, (int)count);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
 	free(content);
-	freePixels(pixels, pixelCount);
+	freePixels(pixels, count);
 	destroyObjects(&gl);
 	glfwTerminate();
 

@@ -3,7 +3,7 @@
 > Slow ass image parser and renderer with OpenGL.
 
 - [x] OpenGL + GLFW renderer
-- [ ] PPM P3
+- [x] PPM P3
 - [ ] PPM P6
 - [ ] PGM P5
 - [ ] PBM P4

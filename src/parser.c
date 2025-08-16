@@ -1,6 +1,8 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "./include/renderer.h"
 #include "./include/parser.h"
 
 struct Pixel* parseImage(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
@@ -10,39 +12,39 @@ struct Pixel* parseImage(const unsigned char* data, const size_t size, size_t* c
 	const int type = getImageType(data, size);
 	switch (type)
 	{
-		case IMAGE_TYPE_PPM_P3: printf("PPM P3\n");
+		case IMAGE_TYPE_PPM_P3:
 			return parsePPM_P3(data, size, count, width, height);
-		case IMAGE_TYPE_PPM_P6: printf("PPM P6\n");
+		case IMAGE_TYPE_PPM_P6:
 			return parsePPM_P6(data, size, count, width, height);
-		case IMAGE_TYPE_PGM_P5: printf("PGM P5\n");
+		case IMAGE_TYPE_PGM_P5:
 			return parsePGM_P5(data, size, count, width, height);
-		case IMAGE_TYPE_PBM_P4: printf("PBM P4\n");
+		case IMAGE_TYPE_PBM_P4:
 			return parsePBM_P4(data, size, count, width, height);
-		case IMAGE_TYPE_BMP_24: printf("BMP 24\n");
+		case IMAGE_TYPE_BMP_24:
 			return parseBMP_24(data, size, count, width, height);
-		case IMAGE_TYPE_BMP_32: printf("BMP 32\n");
+		case IMAGE_TYPE_BMP_32:
 			return parseBMP_32(data, size, count, width, height);
-		case IMAGE_TYPE_TGA_24: printf("TGA 24\n");
+		case IMAGE_TYPE_TGA_24:
 			return parseTGA_24(data, size, count, width, height);
-		case IMAGE_TYPE_TGA_32: printf("TGA 32\n");
+		case IMAGE_TYPE_TGA_32:
 			return parseTGA_32(data, size, count, width, height);
-		case IMAGE_TYPE_TGA_RLE: printf("TGA RLE\n");
+		case IMAGE_TYPE_TGA_RLE:
 			return parseTGA_RLE(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_8BIT: printf("PNG 8-bit\n");
+		case IMAGE_TYPE_PNG_8BIT:
 			return parsePNG_8bit(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_TRNS: printf("PNG TRNS\n");
+		case IMAGE_TYPE_PNG_TRNS:
 			return parsePNG_TRNS(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_PLTE: printf("PNG PLTE\n");
+		case IMAGE_TYPE_PNG_PLTE:
 			return parsePNG_PLTE(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_GRAYSCALE: printf("PNG Grayscale\n");
+		case IMAGE_TYPE_PNG_GRAYSCALE:
 			return parsePNG_Grayscale(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_16BIT: printf("PNG 16-bit\n");
+		case IMAGE_TYPE_PNG_16BIT:
 			return parsePNG_16bit(data, size, count, width, height);
-		case IMAGE_TYPE_PNG_ADAM7: printf("PNG ADAM7\n");
+		case IMAGE_TYPE_PNG_ADAM7:
 			return parsePNG_ADAM7(data, size, count, width, height);
-		case IMAGE_TYPE_TIFF_BASELINE: printf("TIFF Baseline\n");
+		case IMAGE_TYPE_TIFF_BASELINE:
 			return parseTIFF_Baseline(data, size, count, width, height);
-		case IMAGE_TYPE_JPEG_BASELINE: printf("JPEG Baseline\n");
+		case IMAGE_TYPE_JPEG_BASELINE:
 			return parseJPEG_Baseline(data, size, count, width, height);
 		default:
 			fprintf(stderr, "Unknown image type: %d\n", type);
@@ -162,10 +164,158 @@ int getImageType(const unsigned char* data, const size_t size)
 
 void freePixels(struct Pixel* pixels, const size_t count) { if (pixels && count > 0) free(pixels); }
 
-struct Pixel* parsePPM_P3(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+/*
+struct Pixel p;
+p.x = ((px + 0.5) / (WIDTH + PADDING)) * 2 - 1;
+p.y = 1 - ((py + 0.5) / (HEIGHT + PADDING)) * 2;
+
+// For 8-bit, divide by 255
+// For 16-bit, divide by 65535
+p.r = r8 / 255;
+p.g = g8 / 255;
+p.b = b8 / 255;
+p.a = a8 / 255;
+p.size = 1;
+*/
+
+static void skipWhitespace(const unsigned char** p, const unsigned char* end)
 {
-	fprintf(stderr, "Not implemented yet!\n");
-	return NULL;
+	const unsigned char* copy = *p;
+	while (1)
+	{
+		while (copy < end && (*copy == ' ' || *copy == '\t' || *copy == '\n' || *copy == '\r')) copy++;
+		if (copy < end && *copy == '#')
+		{
+			while (copy < end && *copy != '\n') copy++;
+			continue;
+		}
+
+		break;
+	}
+
+	*p = copy;
+}
+
+static int readUint(const unsigned char** p, const unsigned char* end, int* out)
+{
+	skipWhitespace(p, end);
+	if (*p >= end || **p < '0' || **p > '9') return 0;
+
+	long v = 0;
+	while (*p < end && **p >= '0' && **p <= '9')
+	{
+		v = v * 10 + (**p - '0');
+		(*p)++;
+
+		if (v > 0x7FFFFFFF) return 0;
+	}
+
+	*out = (int)v;
+	return 1;
+}
+
+static int readPPMHeader(const unsigned char* data, const size_t size, const char* magic, int* width, int* height,
+                         int* maxVal, const unsigned char** outP, const unsigned char** outEnd)
+{
+	if (!data || size < 2) return 0;
+	const unsigned char *p = data, *end = data + size;
+
+	skipWhitespace(&p, end);
+	if (p + 2 > end || p[0] != (const unsigned char)magic[0] || p[1] != (const unsigned char)magic[1])
+	{
+		fprintf(stderr, "Invalid PPM header: expected '%s'\n", magic);
+		return 0;
+	}
+	p += 2;
+
+	if (!readUint(&p, end, width))
+	{
+		fprintf(stderr, "Invalid PPM header: expected width\n");
+		return 0;
+	}
+	if (!readUint(&p, end, height))
+	{
+		fprintf(stderr, "Invalid PPM header: expected height\n");
+		return 0;
+	}
+	if (!readUint(&p, end, maxVal))
+	{
+		fprintf(stderr, "Invalid PPM header: expected max value\n");
+		return 0;
+	}
+
+	if (*width <= 0 || *height <= 0)
+	{
+		fprintf(stderr, "Invalid image dimensions: %d x %d\n", *width, *height);
+		return 0;
+	}
+	if (*maxVal <= 0 || *maxVal > 65535)
+	{
+		fprintf(stderr, "Invalid PPM header: max value must be between 1 and 65535, got %d\n", *maxVal);
+		return 0;
+	}
+
+	skipWhitespace(&p, end);
+	*outP = p;
+	*outEnd = end;
+
+	return 1;
+}
+
+struct Pixel* parsePPM_P3(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
+{
+	const unsigned char *p, *end;
+	int maxVal;
+
+	if (!count || !width || !height) return NULL;
+	if (!readPPMHeader(data, size, "P3", width, height, &maxVal, &p, &end)) return NULL;
+
+	*count = (size_t)*width * (size_t)*height;
+	if (*count > SIZE_MAX / sizeof(struct Pixel))
+	{
+		fprintf(stderr, "Image too large: %dx%d exceeds maximum pixel count\n", *width, *height);
+		return NULL;
+	}
+
+	struct Pixel* pixels = malloc(*count * sizeof(struct Pixel));
+	if (!pixels)
+	{
+		fprintf(stderr, "Failed to allocate memory for %zu pixels\n", *count);
+		return NULL;
+	}
+
+	const float invMax = 1.0f / (float)maxVal;
+	for (int y = 0; y < *height; ++y)
+		for (int x = 0; x < *width; ++x)
+		{
+			int r, g, b;
+			if (!readUint(&p, end, &r) || !readUint(&p, end, &g) || !readUint(&p, end, &b))
+			{
+				fprintf(stderr, "Invalid pixel data at (%d, %d)\n", x, y);
+				free(pixels);
+
+				return NULL;
+			}
+
+			if (r < 0 || g < 0 || b < 0 || r > maxVal || g > maxVal || b > maxVal)
+			{
+				fprintf(stderr, "Invalid pixel value at (%d, %d): r=%d, g=%d, b=%d (max=%d)\n", x, y, r, g, b, maxVal);
+				free(pixels);
+
+				return NULL;
+			}
+
+			struct Pixel* px = &pixels[(size_t)y * (size_t)*width + (size_t)x];
+			px->x = (float)x;
+			px->y = (float)y;
+			px->r = (float)r * invMax;
+			px->g = (float)g * invMax;
+			px->b = (float)b * invMax;
+			px->a = 1.0f;
+			px->size = PIXEL_SIZE;
+		}
+
+	return pixels;
 }
 
 struct Pixel* parsePPM_P6(const unsigned char* data, size_t size, size_t* count, int* width, int* height)

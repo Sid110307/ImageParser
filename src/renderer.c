@@ -23,11 +23,16 @@ static const char* fragmentSource = "#version 330 core\n"
 	"    FragColor = vColor;\n"
 	"}\n";
 
+extern struct Pixel* pixels;
+extern int imageWidth, imageHeight;
+extern size_t count;
+extern struct GLObjects gl;
+
 // ReSharper disable once CppParameterMayBeConstPtrOrRef
 static void fbSizeCallback(GLFWwindow* window, const int width, const int height)
 {
 	(void)window;
-	glViewport(0, 0, width, height);
+	updatePositions(width, height);
 }
 
 GLFWwindow* createWindow(const int w, const int h, const char* title)
@@ -140,7 +145,38 @@ static GLuint linkProgram(const GLuint vs, const GLuint fs)
 	return prog;
 }
 
-int createObjects(struct GLObjects* out, const struct Pixel* pixels, const size_t count)
+void setUniform3f(const GLuint program, const char* name, const float x, const float y, const float z)
+{
+	glUseProgram(program);
+	const GLint loc = glGetUniformLocation(program, name);
+	if (loc != -1)
+		glUniform3f(loc, x, y, z);
+	glUseProgram(0);
+}
+
+void updatePositions(const int fbW, const int fbH)
+{
+	glViewport(0, 0, fbW, fbH);
+	for (int row = 0; row < imageHeight; ++row)
+	{
+		for (int col = 0; col < imageWidth; ++col)
+		{
+			const size_t i = (size_t)row * (size_t)imageWidth + (size_t)col;
+			const float xPixels = PADDING + (float)col * PIXEL_SIZE;
+			const float yPixels = PADDING + (float)row * PIXEL_SIZE;
+
+			pixels[i].x = xPixels / (float)fbW * 2.0f - 1.0f;
+			pixels[i].y = 1.0f - yPixels / (float)fbH * 2.0f;
+			pixels[i].size = PIXEL_SIZE;
+		}
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, gl.VBO);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)(count * sizeof(struct Pixel)), pixels);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+int createObjects(struct GLObjects* out, const struct Pixel* pixelObjects, const size_t totalCount)
 {
 	const GLuint vs = compileShader(GL_VERTEX_SHADER, vertexSource);
 	const GLuint fs = compileShader(GL_FRAGMENT_SHADER, fragmentSource);
@@ -157,8 +193,8 @@ int createObjects(struct GLObjects* out, const struct Pixel* pixels, const size_
 	glBindBuffer(GL_ARRAY_BUFFER, out->VBO);
 
 	const GLsizeiptr stride = 7 * sizeof(float);
-	if (pixels && count > 0)
-		glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(count * stride), pixels, GL_STATIC_DRAW);
+	if (pixelObjects && totalCount > 0)
+		glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(totalCount * stride), pixelObjects, GL_STATIC_DRAW);
 	else
 		glBufferData(GL_ARRAY_BUFFER, stride, NULL, GL_STATIC_DRAW);
 
@@ -177,44 +213,35 @@ int createObjects(struct GLObjects* out, const struct Pixel* pixels, const size_
 	return 1;
 }
 
-void destroyObjects(struct GLObjects* gl)
+void destroyObjects(struct GLObjects* glObjects)
 {
-	if (gl->VBO)
+	if (glObjects->VBO)
 	{
-		glDeleteBuffers(1, &gl->VBO);
-		gl->VBO = 0;
+		glDeleteBuffers(1, &glObjects->VBO);
+		glObjects->VBO = 0;
 	}
-	if (gl->VAO)
+	if (glObjects->VAO)
 	{
-		glDeleteVertexArrays(1, &gl->VAO);
-		gl->VAO = 0;
+		glDeleteVertexArrays(1, &glObjects->VAO);
+		glObjects->VAO = 0;
 	}
-	if (gl->program)
+	if (glObjects->program)
 	{
-		glDeleteProgram(gl->program);
-		gl->program = 0;
+		glDeleteProgram(glObjects->program);
+		glObjects->program = 0;
 	}
 }
 
-void render(const struct GLObjects* gl, const GLsizei count)
+void render(const struct GLObjects* glObjects, const GLsizei totalCount)
 {
-	if (!gl || count <= 0) return;
+	if (!glObjects || totalCount <= 0) return;
 
-	glUseProgram(gl->program);
-	glBindVertexArray(gl->VAO);
+	glUseProgram(glObjects->program);
+	glBindVertexArray(glObjects->VAO);
 
 	glEnable(GL_PROGRAM_POINT_SIZE);
-	glDrawArrays(GL_POINTS, 0, count);
+	glDrawArrays(GL_POINTS, 0, totalCount);
 
 	glBindVertexArray(0);
-	glUseProgram(0);
-}
-
-void setUniform3f(const GLuint program, const char* name, const float x, const float y, const float z)
-{
-	glUseProgram(program);
-	const GLint loc = glGetUniformLocation(program, name);
-	if (loc != -1)
-		glUniform3f(loc, x, y, z);
 	glUseProgram(0);
 }

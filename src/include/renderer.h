@@ -13,10 +13,14 @@ struct Pixel
 	float x, y, r, g, b, a, size;
 };
 
+#define PADDING 8
+#define PIXEL_SIZE 1
+
 GLFWwindow* createWindow(int w, int h, const char* title);
 int initGLEW();
 void setUniform3f(GLuint program, const char* name, float x, float y, float z);
+void updatePositions(int fbW, int fbH);
 
-int createObjects(struct GLObjects* out, const struct Pixel* pixels, size_t count);
-void destroyObjects(struct GLObjects* gl);
-void render(const struct GLObjects* gl, GLsizei count);
+int createObjects(struct GLObjects* out, const struct Pixel* pixelObjects, size_t totalCount);
+void destroyObjects(struct GLObjects* glObjects);
+void render(const struct GLObjects* glObjects, GLsizei totalCount);

@@ -22,20 +22,6 @@ enum ImageType
 	IMAGE_TYPE_JPEG_BASELINE
 };
 
-/*
-struct Pixel p;
-p.x = ((px + 0.5) / WIDTH) * 2 - 1;
-p.y = 1 - ((py + 0.5) / HEIGHT) * 2;
-
-// For 8-bit, divide by 255
-// For 16-bit, divide by 65535
-p.r = r8 / 255;
-p.g = g8 / 255;
-p.b = b8 / 255;
-p.a = a8 / 255;
-p.size = 1;
-*/
-
 struct Pixel* parseImage(const unsigned char* data, size_t size, size_t* count, int* width, int* height);
 int getImageType(const unsigned char* data, size_t size);
 void freePixels(struct Pixel* pixels, size_t count);
