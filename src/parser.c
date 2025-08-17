@@ -267,14 +267,13 @@ struct Pixel* parsePPM_P3(const unsigned char* data, const size_t size, size_t* 
 
 	if (!count || !width || !height) return NULL;
 	if (!readPPMHeader(data, size, "P3", width, height, &maxVal, &p, &end)) return NULL;
-
-	*count = (size_t)*width * (size_t)*height;
-	if (*count > SIZE_MAX / sizeof(struct Pixel))
+	if ((size_t)*width * (size_t)*height > SIZE_MAX / sizeof(struct Pixel))
 	{
 		fprintf(stderr, "Image too large: %dx%d exceeds maximum pixel count\n", *width, *height);
 		return NULL;
 	}
 
+	*count = (size_t)*width * (size_t)*height;
 	struct Pixel* pixels = malloc(*count * sizeof(struct Pixel));
 	if (!pixels)
 	{
@@ -323,14 +322,13 @@ struct Pixel* parsePPM_P6(const unsigned char* data, const size_t size, size_t* 
 
 	if (!count || !width || !height) return NULL;
 	if (!readPPMHeader(data, size, "P6", width, height, &maxVal, &p, &end)) return NULL;
-
-	*count = (size_t)*width * (size_t)*height;
-	if (*count > SIZE_MAX / sizeof(struct Pixel))
+	if ((size_t)*width * (size_t)*height > SIZE_MAX / sizeof(struct Pixel))
 	{
 		fprintf(stderr, "Image too large: %dx%d exceeds maximum pixel count\n", *width, *height);
 		return NULL;
 	}
 
+	*count = (size_t)*width * (size_t)*height;
 	struct Pixel* pixels = malloc(*count * sizeof(struct Pixel));
 	if (!pixels)
 	{
@@ -388,14 +386,13 @@ struct Pixel* parsePGM_P5(const unsigned char* data, const size_t size, size_t* 
 
 	if (!count || !width || !height) return NULL;
 	if (!readPPMHeader(data, size, "P5", width, height, &maxVal, &p, &end)) return NULL;
-
-	*count = (size_t)*width * (size_t)*height;
-	if (*count > SIZE_MAX / sizeof(struct Pixel))
+	if ((size_t)*width * (size_t)*height > SIZE_MAX / sizeof(struct Pixel))
 	{
 		fprintf(stderr, "Image too large: %dx%d exceeds maximum pixel count\n", *width, *height);
 		return NULL;
 	}
 
+	*count = (size_t)*width * (size_t)*height;
 	struct Pixel* pixels = malloc(*count * sizeof(struct Pixel));
 	if (!pixels)
 	{
