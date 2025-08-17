@@ -162,8 +162,6 @@ int getImageType(const unsigned char* data, const size_t size)
 	return IMAGE_TYPE_UNKNOWN;
 }
 
-void freePixels(struct Pixel* pixels, const size_t count) { if (pixels && count > 0) free(pixels); }
-
 /*
 struct Pixel p;
 p.x = ((px + 0.5) / (WIDTH + PADDING)) * 2 - 1;
@@ -223,24 +221,24 @@ static int readPPMHeader(const unsigned char* data, const size_t size, const cha
 	skipWhitespace(&p, end);
 	if (p + 2 > end || p[0] != (const unsigned char)magic[0] || p[1] != (const unsigned char)magic[1])
 	{
-		fprintf(stderr, "Invalid PPM header: expected '%s'\n", magic);
+		fprintf(stderr, "Invalid header: expected '%s'\n", magic);
 		return 0;
 	}
 	p += 2;
 
 	if (!readUint(&p, end, width))
 	{
-		fprintf(stderr, "Invalid PPM header: expected width\n");
+		fprintf(stderr, "Invalid header: expected width\n");
 		return 0;
 	}
 	if (!readUint(&p, end, height))
 	{
-		fprintf(stderr, "Invalid PPM header: expected height\n");
+		fprintf(stderr, "Invalid header: expected height\n");
 		return 0;
 	}
 	if (!readUint(&p, end, maxVal))
 	{
-		fprintf(stderr, "Invalid PPM header: expected max value\n");
+		fprintf(stderr, "Invalid header: expected max value\n");
 		return 0;
 	}
 
@@ -251,7 +249,7 @@ static int readPPMHeader(const unsigned char* data, const size_t size, const cha
 	}
 	if (*maxVal <= 0 || *maxVal > 65535)
 	{
-		fprintf(stderr, "Invalid PPM header: max value must be between 1 and 65535, got %d\n", *maxVal);
+		fprintf(stderr, "Invalid header: max value must be between 1 and 65535, got %d\n", *maxVal);
 		return 0;
 	}
 
@@ -346,7 +344,7 @@ struct Pixel* parsePPM_P6(const unsigned char* data, const size_t size, size_t* 
 	for (int y = 0; y < *height; ++y)
 		for (int x = 0; x < *width; ++x)
 		{
-			if (p + (GLsizeiptr)(3 * bytesPerSample) > end)
+			if ((size_t)(end - p) < (size_t)(3 * bytesPerSample))
 			{
 				fprintf(stderr, "Unexpected end of data at (%d, %d)\n", x, y);
 				free(pixels);
@@ -383,91 +381,152 @@ struct Pixel* parsePPM_P6(const unsigned char* data, const size_t size, size_t* 
 	return pixels;
 }
 
-struct Pixel* parsePGM_P5(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parsePGM_P5(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
+{
+	const unsigned char *p, *end;
+	int maxVal;
+
+	if (!count || !width || !height) return NULL;
+	if (!readPPMHeader(data, size, "P5", width, height, &maxVal, &p, &end)) return NULL;
+
+	*count = (size_t)*width * (size_t)*height;
+	if (*count > SIZE_MAX / sizeof(struct Pixel))
+	{
+		fprintf(stderr, "Image too large: %dx%d exceeds maximum pixel count\n", *width, *height);
+		return NULL;
+	}
+
+	struct Pixel* pixels = malloc(*count * sizeof(struct Pixel));
+	if (!pixels)
+	{
+		fprintf(stderr, "Failed to allocate memory for %zu pixels\n", *count);
+		return NULL;
+	}
+
+	const int bytesPerSample = maxVal > 255 ? 2 : 1;
+	const float invMax = 1.0f / (float)maxVal;
+
+	for (int y = 0; y < *height; ++y)
+		for (int x = 0; x < *width; ++x)
+		{
+			if ((size_t)(end - p) < (size_t)bytesPerSample)
+			{
+				fprintf(stderr, "Unexpected end of data at (%d, %d)\n", x, y);
+				free(pixels);
+
+				return NULL;
+			}
+
+			int value;
+			if (bytesPerSample == 1) value = *p++;
+			else
+			{
+				value = p[0] << 8 | p[1];
+				p += 2;
+			}
+
+			if (value < 0 || value > maxVal)
+			{
+				fprintf(stderr, "Invalid pixel value at (%d, %d): %d (max=%d)\n", x, y, value, maxVal);
+				free(pixels);
+
+				return NULL;
+			}
+
+			struct Pixel* px = &pixels[(size_t)y * (size_t)*width + (size_t)x];
+			const float g = (float)value * invMax;
+
+			px->x = (float)x;
+			px->y = (float)y;
+			px->r = g;
+			px->g = g;
+			px->b = g;
+			px->a = 1.0f;
+			px->size = PIXEL_SIZE;
+		}
+
+	return pixels;
+}
+
+struct Pixel* parsePBM_P4(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parsePBM_P4(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parseBMP_24(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parseBMP_24(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parseBMP_32(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parseBMP_32(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parseTGA_24(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parseTGA_24(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parseTGA_32(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parseTGA_32(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parseTGA_RLE(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parseTGA_RLE(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parsePNG_8bit(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parsePNG_8bit(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parsePNG_TRNS(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parsePNG_TRNS(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parsePNG_PLTE(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parsePNG_PLTE(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parsePNG_Grayscale(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parsePNG_Grayscale(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parsePNG_16bit(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parsePNG_16bit(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parsePNG_ADAM7(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parsePNG_ADAM7(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parseTIFF_Baseline(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
-struct Pixel* parseTIFF_Baseline(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
-{
-	fprintf(stderr, "Not implemented yet!\n");
-	return NULL;
-}
-
-struct Pixel* parseJPEG_Baseline(const unsigned char* data, size_t size, size_t* count, int* width, int* height)
+struct Pixel* parseJPEG_Baseline(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;

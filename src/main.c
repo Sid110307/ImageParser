@@ -66,7 +66,7 @@ int main(int argc, char** argv)
 	{
 		fprintf(stderr, "Failed to parse image: %s\n", argv[1]);
 		free(content);
-		freePixels(pixels, count);
+		free(pixels);
 
 		return EXIT_FAILURE;
 	}
@@ -75,7 +75,7 @@ int main(int argc, char** argv)
 	{
 		fprintf(stderr, "Invalid image dimensions: %dx%d\n", imageWidth, imageHeight);
 		free(content);
-		freePixels(pixels, count);
+		free(pixels);
 
 		return EXIT_FAILURE;
 	}
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
 	if (!window)
 	{
 		free(content);
-		freePixels(pixels, count);
+		free(pixels);
 
 		return EXIT_FAILURE;
 	}
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 	if (!initGLEW())
 	{
 		free(content);
-		freePixels(pixels, count);
+		free(pixels);
 		glfwTerminate();
 
 		return EXIT_FAILURE;
@@ -101,7 +101,7 @@ int main(int argc, char** argv)
 	if (!createObjects(&gl, pixels, count))
 	{
 		free(content);
-		freePixels(pixels, count);
+		free(pixels);
 		destroyObjects(&gl);
 		glfwTerminate();
 
@@ -124,7 +124,7 @@ int main(int argc, char** argv)
 	}
 
 	free(content);
-	freePixels(pixels, count);
+	free(pixels);
 	destroyObjects(&gl);
 	glfwTerminate();
 

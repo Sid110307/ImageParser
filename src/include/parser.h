@@ -24,7 +24,6 @@ enum ImageType
 
 struct Pixel* parseImage(const unsigned char* data, size_t size, size_t* count, int* width, int* height);
 int getImageType(const unsigned char* data, size_t size);
-void freePixels(struct Pixel* pixels, size_t count);
 
 struct Pixel* parsePPM_P3(const unsigned char* data, size_t size, size_t* count, int* width, int* height);
 struct Pixel* parsePPM_P6(const unsigned char* data, size_t size, size_t* count, int* width, int* height);
