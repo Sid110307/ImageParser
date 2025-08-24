@@ -6,7 +6,7 @@
 - [x] PPM P3
 - [x] PPM P6
 - [x] PGM P5
-- [ ] PBM P4
+- [x] PBM P4
 - [ ] BMP 24-bit (uncompressed)
 - [ ] BMP 32-bit (uncompressed)
 - [ ] TGA 24-bit (uncompressed)

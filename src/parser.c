@@ -267,13 +267,15 @@ struct Pixel* parsePPM_P3(const unsigned char* data, const size_t size, size_t* 
 
 	if (!count || !width || !height) return NULL;
 	if (!readPPMHeader(data, size, "P3", width, height, &maxVal, &p, &end)) return NULL;
-	if ((size_t)*width * (size_t)*height > SIZE_MAX / sizeof(struct Pixel))
+
+	const size_t w = (size_t)*width, h = (size_t)*height;
+	if (w == 0 || h == 0 || w > SIZE_MAX / sizeof(struct Pixel) / h)
 	{
 		fprintf(stderr, "Image too large: %dx%d exceeds maximum pixel count\n", *width, *height);
 		return NULL;
 	}
 
-	*count = (size_t)*width * (size_t)*height;
+	*count = w * h;
 	struct Pixel* pixels = malloc(*count * sizeof(struct Pixel));
 	if (!pixels)
 	{
@@ -386,13 +388,15 @@ struct Pixel* parsePGM_P5(const unsigned char* data, const size_t size, size_t* 
 
 	if (!count || !width || !height) return NULL;
 	if (!readPPMHeader(data, size, "P5", width, height, &maxVal, &p, &end)) return NULL;
-	if ((size_t)*width * (size_t)*height > SIZE_MAX / sizeof(struct Pixel))
+
+	const size_t w = (size_t)*width, h = (size_t)*height;
+	if (w == 0 || h == 0 || w > SIZE_MAX / sizeof(struct Pixel) / h)
 	{
 		fprintf(stderr, "Image too large: %dx%d exceeds maximum pixel count\n", *width, *height);
 		return NULL;
 	}
 
-	*count = (size_t)*width * (size_t)*height;
+	*count = w * h;
 	struct Pixel* pixels = malloc(*count * sizeof(struct Pixel));
 	if (!pixels)
 	{
@@ -447,8 +451,83 @@ struct Pixel* parsePGM_P5(const unsigned char* data, const size_t size, size_t* 
 
 struct Pixel* parsePBM_P4(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
-	fprintf(stderr, "Not implemented yet!\n");
-	return NULL;
+	if (!count || !width || !height) return NULL;
+	const unsigned char *p = data, *end = data + size;
+
+	skipWhitespace(&p, end);
+	if (p + 2 > end || p[0] != 'P' || p[1] != '4')
+	{
+		fprintf(stderr, "Invalid header: expected 'P4'\n");
+		return NULL;
+	}
+	p += 2;
+
+	if (!readUint(&p, end, width))
+	{
+		fprintf(stderr, "Invalid header: expected width\n");
+		return NULL;
+	}
+	if (!readUint(&p, end, height))
+	{
+		fprintf(stderr, "Invalid header: expected height\n");
+		return NULL;
+	}
+	if (*width <= 0 || *height <= 0)
+	{
+		fprintf(stderr, "Invalid image dimensions: %d x %d\n", *width, *height);
+		return NULL;
+	}
+
+	skipWhitespace(&p, end);
+	const size_t w = (size_t)*width, h = (size_t)*height;
+	if (w == 0 || h == 0 || w > SIZE_MAX / sizeof(struct Pixel) / h)
+	{
+		fprintf(stderr, "Image too large: %dx%d exceeds maximum pixel count\n", *width, *height);
+		return NULL;
+	}
+
+	*count = w * h;
+	struct Pixel* pixels = malloc(*count * sizeof(struct Pixel));
+	if (!pixels)
+	{
+		fprintf(stderr, "Failed to allocate memory for %zu pixels\n", *count);
+		return NULL;
+	}
+
+	const int rowBytes = (*width + 7) / 8;
+	for (int y = 0; y < *height; ++y)
+	{
+		if ((size_t)(end - p) < (size_t)rowBytes)
+		{
+			fprintf(stderr, "Unexpected end of data at row %d\n", y);
+			free(pixels);
+
+			return NULL;
+		}
+
+		const unsigned char* row = p;
+		for (int x = 0; x < *width; ++x)
+		{
+			const int byteIndex = x / 8;
+			const int bitIndex = 7 - x % 8;
+			const int bit = row[byteIndex] >> bitIndex & 1;
+
+			struct Pixel* px = &pixels[(size_t)y * (size_t)*width + (size_t)x];
+			const float g = bit ? 0.0f : 1.0f;
+
+			px->x = (float)x;
+			px->y = (float)y;
+			px->r = g;
+			px->g = g;
+			px->b = g;
+			px->a = 1.0f;
+			px->size = PIXEL_SIZE;
+		}
+
+		p += rowBytes;
+	}
+
+	return pixels;
 }
 
 struct Pixel* parseBMP_24(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
