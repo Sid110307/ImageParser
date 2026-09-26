@@ -180,7 +180,13 @@ int createObjects(struct GLObjects* out, const struct Pixel* pixelObjects, const
 {
 	const GLuint vs = compileShader(GL_VERTEX_SHADER, vertexSource);
 	const GLuint fs = compileShader(GL_FRAGMENT_SHADER, fragmentSource);
-	if (!vs || !fs) return 0;
+	if (!vs || !fs)
+	{
+		if (vs) glDeleteShader(vs);
+		if (fs) glDeleteShader(fs);
+
+		return 0;
+	}
 
 	out->program = linkProgram(vs, fs);
 	glDeleteShader(vs);

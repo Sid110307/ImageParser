@@ -1,8 +1,8 @@
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "./include/renderer.h"
 #include "./include/parser.h"
 
 struct Pixel* parseImage(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
@@ -161,20 +161,6 @@ int getImageType(const unsigned char* data, const size_t size)
 
 	return IMAGE_TYPE_UNKNOWN;
 }
-
-/*
-struct Pixel p;
-p.x = ((px + 0.5) / (WIDTH + PADDING)) * 2 - 1;
-p.y = 1 - ((py + 0.5) / (HEIGHT + PADDING)) * 2;
-
-// For 8-bit, divide by 255
-// For 16-bit, divide by 65535
-p.r = r8 / 255;
-p.g = g8 / 255;
-p.b = b8 / 255;
-p.a = a8 / 255;
-p.size = 1;
-*/
 
 static void skipWhitespace(const unsigned char** p, const unsigned char* end)
 {
@@ -532,78 +518,104 @@ struct Pixel* parsePBM_P4(const unsigned char* data, const size_t size, size_t* 
 
 struct Pixel* parseBMP_24(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseBMP_32(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseTGA_24(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseTGA_32(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseTGA_RLE(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_8bit(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_TRNS(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_PLTE(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_Grayscale(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_16bit(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parsePNG_ADAM7(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseTIFF_Baseline(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }
 
 struct Pixel* parseJPEG_Baseline(const unsigned char* data, const size_t size, size_t* count, int* width, int* height)
 {
+	(void)data, (void)size, (void)count, (void)width, (void)height;
+
 	fprintf(stderr, "Not implemented yet!\n");
 	return NULL;
 }

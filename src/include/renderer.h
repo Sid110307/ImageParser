@@ -3,18 +3,14 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include "parser.h"
+
 struct GLObjects
 {
 	GLuint VAO, VBO, program;
 };
 
-struct Pixel
-{
-	float x, y, r, g, b, a, size;
-};
-
 #define PADDING 8
-#define PIXEL_SIZE 1
 
 GLFWwindow* createWindow(int w, int h, const char* title);
 int initGLEW();

@@ -1,6 +1,6 @@
 # ImageParser
 
-ImageParser is a from-scratch image-format parser and OpenGL renderer written in C.
+> Slow ass image parser and renderer with OpenGL.
 
 ## Supported formats
 
@@ -25,7 +25,9 @@ ImageParser is a from-scratch image-format parser and OpenGL renderer written in
 - GLEW
 
 ```sh
-cmake -S . -B build
-cmake --build build
-./build/imageParser
+cmake -S . -B bin
+cmake --build bin
+./bin/imageParser <path/to/image>
 ```
+
+Or via `run.sh`, which does the same and also runs the result.

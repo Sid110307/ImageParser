@@ -1,5 +1,14 @@
 #pragma once
 
+#include <stddef.h>
+
+struct Pixel
+{
+	float x, y, r, g, b, a, size;
+};
+
+#define PIXEL_SIZE 1
+
 enum ImageType
 {
 	IMAGE_TYPE_UNKNOWN = 0,
